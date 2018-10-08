@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>CVJM App</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4"
+        crossorigin="anonymous">
+    <style>
+        .lds-ring {
+            display: inline-block;
+            position: relative;
+            width: 64px;
+            height: 64px;
+        }
+
+        .lds-ring div {
+            box-sizing: border-box;
+            display: block;
+            position: absolute;
+            width: 51px;
+            height: 51px;
+            margin: 6px;
+            border: 6px solid #fa923f;
+            border-radius: 50%;
+            animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            border-color: #fa923f transparent transparent transparent;
+        }
+
+        .lds-ring div:nth-child(1) {
+            animation-delay: -0.45s;
+        }
+
+        .lds-ring div:nth-child(2) {
+            animation-delay: -0.3s;
+        }
+
+        .lds-ring div:nth-child(3) {
+            animation-delay: -0.15s;
+        }
+
+        @keyframes lds-ring {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="row">
+                <div class="col">
+                    <h1>CVJM App</h1>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col">
+                    <div>
+                        <button class="btn btn-primary" @click="onCreateProfile">
+                            Register
+                        </button>
+                        <button class="btn btn-primary" @click="onLoadProfile">
+                            Login
+                        </button>
+                    </div>
+                </div>
+                <div class="col text-right">
+                        <h4>Session: {{ currentSessionUser }}</h4>
+                </div>
+            </div>
+            <hr>
+
+            <div class="row mb-3">
+                <div v-if="error" class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                <div v-if="success" class="alert alert-success" role="alert">
+                    {{ success }}
+                </div>
+                </div>
+                <div  class="row">
+                   
+                    <div v-if="register" class="col">
+                        <form @submit.prevent="onRegisterProfile">
+                            <h2>New profile</h2>
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input v-model="outgoingProfile.email" type="text" class="form-control" id="eamil" placeholder="Your email">
+                            </div>
+                            <div class="form-group">
+                                <label for="username">Your username</label>
+                                <input v-model="outgoingProfile.username" type="text" class="form-control" id="username" placeholder="Your username">
+                            </div>
+                            <div class="form-group">
+                                <label for="pwd">Your password</label>
+                                <input v-model="outgoingProfile.pwd" type="text" class="form-control" id="pwd" placeholder="Your password">
+                            </div>
+                            <div v-if="txLoading" class="lds-ring">
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+           
+            <div v-if="view === 'visits'" class="row">
+
+                <div class="card-body">
+                    <div class="list-group">
+                        <h2>Besuchsübersicht:</h2>
+                         
+                        <div class="list-group-item flex-column align-items-start">
+                            <div>Zeitraum: </div>
+                            <div>Gastgeber/Gast: </div>
+                            <div>Ort: </div>
+                            <div>Vereinbart: </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                visits: [
+
+                ],
+                loggedOut: true,
+                wallet: null,
+                view: 'start',
+                walletLoading: false,
+                txLoading: false,
+                dataLoading: false,
+                showElement: null,
+                error: null,
+                success: null,
+                register: null,
+                currentSessionUser: null,
+                outgoingProfile: {
+                    email: '',
+                    username: '',
+                    pwd: ''
+                },
+                profileInfo: {
+                    email: '',
+                    username: '',
+                    id: ''
+                }
+            },
+            computed: {
+                loadedData: function () {
+                    if (this.view === 'chain') {
+                        return this.blockchain;
+                    } else {
+                        return this.openTransactions
+                    }
+                }
+            },
+            methods: {
+                onRegisterProfile: function () {
+                    error = null
+                    success = null
+                    var vm = this
+                    //vm.txLoading = true
+                    axios.post('/profile', {
+                        email: vm.outgoingProfile.email,
+                        username: vm.outgoingProfile.username,
+                        pwd: vm.outgoingProfile.pwd
+                    })
+                        .then(function (response) {
+                            vm.error = null
+                            vm.success = response.data.message
+                            vm.profileInfo = {
+                                email: response.data.email,
+                                username: response.data.username,
+                                id: response.data.id
+                            }
+                            
+                            currentSessionUser = vm.outgoingProfile.username
+                            vm.loggedOut = false
+                            vm.register = false
+                            vm.view = 'visits'
+                        })
+                        .catch(function (error) {
+                            vm.success = false
+                            vm.error = error.response.data.message
+                            //vm.txLoading = false 
+                            vm.loggedOut = true
+                        });
+                },
+
+                onCreateProfile: function () {
+                    error = null
+                    success = null
+                    var vm = this
+                    vm.register = true
+                    vm.loggedOut = true
+                    vm.view = ''
+                },
+
+                onLoadProfile: function () {
+                    error = null
+                    success = null
+                    var vm = this
+                    vm.loggedOut = false
+                    vm.register = false
+                    vm.view = 'visits'
+                },
+
+                onCreateWallet: function () {
+                    // Send Http request to create a new wallet (and return keys)
+                    var vm = this
+                    vm.walletLoading = true
+                    axios.post('/wallet')
+                        .then(function (response) {
+                            vm.error = null
+                            vm.success = 'Public Key: ' + response.data.public_key + ' Private Key: ' + response.data.private_key
+                            vm.funds = response.data.funds
+                            vm.wallet = {
+                                public_key: response.data.public_key,
+                                private_key: response.data.private_key
+                            }
+                            vm.walletLoading = false
+                        })
+                        .catch(function (error) {
+                            vm.error = error.response.data.message
+                            vm.success = false
+                            vm.wallet = null
+                            vm.walletLoading = false
+                        })
+
+                },
+                onLoadWallet: function () {
+                    // Send Http request to load an existing wallet (from a file on the server)
+                    var vm = this
+                    vm.walletLoading = true
+                    axios.get('/wallet')
+                        .then(function (response) {
+                            vm.error = null
+                            vm.success = 'Public Key: ' + response.data.public_key + ' Private Key: ' + response.data.private_key
+                            vm.funds = response.data.funds
+                            vm.wallet = {
+                                public_key: response.data.public_key,
+                                private_key: response.data.private_key
+                            }
+                            vm.walletLoading = false
+                        })
+                        .catch(function (error) {
+                            vm.error = error.repsonse.data.message
+                            vm.success = false
+                            vm.wallet = null
+                            vm.walletLoading = false
+                        })
+
+                },
+
+                onMine: function () {
+                    var vm = this
+                    axios.post('/mine')
+                        .then(function (response) {
+                            vm.error = null
+                            vm.success = response.data.message
+                            vm.funds = response.data.funds
+                            vm.blockchain = response.data
+                        })
+                        .catch(function (error) {
+                            vm.success = false
+                            vm.error = error.response.data.message
+                        });
+                },
+                onLoadData: function () {
+                    if (this.view === 'chain') {
+                        // Load blockchain data
+                        var vm = this
+                        vm.dataLoading = true
+                        axios.get('/chain')
+                            .then(function (response) {
+                                vm.blockchain = response.data
+                                vm.dataLoading = false
+                            })
+                            .catch(function (error) {
+                                vm.dataLoading = false
+                                vm.error = 'Something went wrong!'
+                            });
+
+                    } else {
+                        // Load transaction data
+                        var vm = this
+                        vm.dataLoading = true
+                        axios.get('/transaction')
+                            .then(function (response) {
+                                vm.openTransactions = response.data
+                                vm.dataLoading = false
+                            })
+                            .catch(function (error) {
+                                vm.dataLoading = false
+                                vm.error = 'Something went wrong!'
+                            });
+                    }
+                }
+            }
+        })
+    </script>
+</body>
